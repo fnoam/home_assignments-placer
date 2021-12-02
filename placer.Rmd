@@ -1,5 +1,5 @@
 ---
-title: "must nice eda"
+title: "placer.ai home assignment"
 output:
   html_document:
     df_print: paged
@@ -40,8 +40,8 @@ Highway_9_Milton <- read.csv(file = '~/Downloads/pf_visits_dump_hashed/visits_Pl
 
 ```
 
-```{r}
 ### clean data
+```{r}
 data_clean <- function(gym_table) {
   
   gym_table <- gym_table %>%
