@@ -1,0 +1,205 @@
+---
+title: "must nice eda"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include = FALSE}
+select_include = FALSE
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  error = FALSE
+)
+
+knitr::opts_knit$set(root.dir = here::here())
+```
+
+```{r}
+#### read files & view them
+library(plyr)
+library(dplyr)
+library(tidyverse)
+library(lubridate)
+library(readr)
+library(magrittr)
+library(plotly)
+
+#setwd("~/Downloads/pf_visits_dump_hashed")
+
+venue_info <- read.csv(file = '~/Downloads/pf_visits_dump_hashed/venues_info.csv')
+
+Molly_Lane_Woodstock <- read.csv(file = '~/Downloads/pf_visits_dump_hashed/visits_Planet_Fitness_299_Molly_Lane_Woodstock_GA_United_States_2018-02-01_2019-02-01.csv')
+Holcomb_Bridge_Road_Roswell <- read.csv(file = '~/Downloads/pf_visits_dump_hashed/visits_Planet_Fitness_1570_Holcomb_Bridge_Road_Roswell_Georgia_United_States_2018-02-01_2019-02-01.csv')
+Alpharetta_Hwy_Roswell <- read.csv(file = '~/Downloads/pf_visits_dump_hashed/visits_Planet_Fitness_10790_Alpharetta_Hwy_Roswell_GA_30076_Roswell_GA_United_States_2018-02-01_2019-02-01.csv')
+Highway_9_Milton <- read.csv(file = '~/Downloads/pf_visits_dump_hashed/visits_Planet_Fitness_13071_Highway_9_Milton_GA_United_States_2018-02-01_2019-02-01.csv')
+
+```
+
+```{r}
+### clean data
+data_clean <- function(gym_table) {
+  
+  gym_table <- gym_table %>%
+  mutate(visit_start_time = as.POSIXct(visit_start_time),
+         visit_end_time = as.POSIXct(visit_end_time)) %>% 
+  mutate(visit_start_month = format(visit_start_time, format = "%Y-%m")) %>% 
+  mutate(visit_start_week = floor_date(visit_start_time,"week",1)) %>% 
+  left_join(venue_info %>% select(-X.), by = "venue_id") %>% 
+  as_tibble()
+}
+
+Molly_Lane_Woodstock <- Molly_Lane_Woodstock %>% data_clean()
+Holcomb_Bridge_Road_Roswell <- Holcomb_Bridge_Road_Roswell %>% data_clean()
+Alpharetta_Hwy_Roswell <- Alpharetta_Hwy_Roswell %>% data_clean()
+Highway_9_Milton <- Highway_9_Milton %>% data_clean()
+
+```
+
+### calculate the weights to see if the gym is really underperforming
+It is, but not worse than Highway_9_Milton; also the visit/customer ratio is similar; the problem is n_customers.
+
+Weekly
+```{r}
+
+weekly_weights <- function(gym_table) {
+  
+  gym_table_p <- gym_table %>%
+    ## be sure to count the customer weight once per timeframe and the visits for each row
+    group_by(visit_start_week, device_id, customer_weight) %>%
+  summarise(visit_weight = sum(visit_weight)) %>% 
+    group_by(visit_start_week) %>%
+    summarise(n_customers = sum(customer_weight), 
+              n_visits = sum(visit_weight)) %>% 
+    summarise(median_weekly_customers = median(n_customers), median_weekly_visits = median(n_visits), visits_per_customer = median(n_visits) / median(n_customers)) %>% 
+    ungroup() %>% 
+    as_tibble()
+}
+
+Alpharetta_Hwy_Roswell_weekly <- Alpharetta_Hwy_Roswell %>% weekly_weights()
+Holcomb_Bridge_Road_Roswell_weekly <- Holcomb_Bridge_Road_Roswell %>% weekly_weights()
+Molly_Lane_Woodstock_weekly <- Molly_Lane_Woodstock %>% weekly_weights()
+Highway_9_Milton_weekly <- Highway_9_Milton %>% weekly_weights()
+
+rbind(Alpharetta_Hwy_Roswell = Alpharetta_Hwy_Roswell_weekly,
+      Holcomb_Bridge_Road_Roswell = Holcomb_Bridge_Road_Roswell_weekly,
+      Molly_Lane_Woodstock = Molly_Lane_Woodstock_weekly,
+      Highway_9_Milton = Highway_9_Milton_weekly)
+
+
+```
+
+Monthly
+```{r}
+
+weekly_weights <- function(gym_table) {
+  
+  gym_table_p <- gym_table %>%
+    ## be sure to count the customer weight once per timeframe and the visits for each row
+    group_by(visit_start_month, device_id, customer_weight) %>%
+  summarise(visit_weight = sum(visit_weight)) %>% 
+    group_by(visit_start_month) %>%
+    summarise(n_customers = sum(customer_weight), 
+              n_visits = sum(visit_weight)) %>% 
+    summarise(median_monthly_customers = median(n_customers), median_monthly_visits = median(n_visits), visits_per_customer = median(n_visits) / median(n_customers)) %>% 
+    ungroup() %>% 
+    as_tibble()
+}
+
+Alpharetta_Hwy_Roswell_p <- Alpharetta_Hwy_Roswell %>% weekly_weights()
+Holcomb_Bridge_Road_Roswell_p <- Holcomb_Bridge_Road_Roswell %>% weekly_weights()
+Molly_Lane_Woodstock_p <- Molly_Lane_Woodstock %>% weekly_weights()
+Highway_9_Milton_p <- Highway_9_Milton %>% weekly_weights()
+
+rbind(Alpharetta_Hwy_Roswell_p = Alpharetta_Hwy_Roswell_p,
+      Holcomb_Bridge_Road_Roswell_p = Holcomb_Bridge_Road_Roswell_p,
+      Molly_Lane_Woodstock_p = Molly_Lane_Woodstock_p,
+      Highway_9_Milton_p = Highway_9_Milton_p)
+```
+
+
+```{r}
+##Total
+# Alpharetta_Hwy_Roswell_p <- Alpharetta_Hwy_Roswell %>% 
+#   summarise(n_customers = sum(customer_weight), n_visits = sum(visit_weight))
+# 
+# Holcomb_Bridge_Road_Roswell_p <- Holcomb_Bridge_Road_Roswell %>% 
+#   summarise(n_customers = sum(customer_weight), n_visits = sum(visit_weight))
+# 
+# Molly_Lane_Woodstock_p <- Molly_Lane_Woodstock %>% 
+#   summarise(n_customers = sum(customer_weight), n_visits = sum(visit_weight))
+# 
+# Highway_9_Milton_p <- Highway_9_Milton %>% 
+#   summarise(n_customers = sum(customer_weight), n_visits = sum(visit_weight))
+# 
+# 
+# rbind(Alpharetta_Hwy_Roswell_p = Alpharetta_Hwy_Roswell_p,
+#       Holcomb_Bridge_Road_Roswell_p = Holcomb_Bridge_Road_Roswell_p,
+#       Molly_Lane_Woodstock_p = Molly_Lane_Woodstock_p,
+#       Highway_9_Milton_p = Highway_9_Milton_p)
+
+```
+
+## Why is Alpharetta_Hwy_Roswell_p underperforming?
+
+```{r}
+### Trend over time
+#Peformance in the better performing gyms is dropping but it does not answer the question so not relevant
+
+# Highway_9_Milton %>% 
+#   group_by(visit_start_week) %>% 
+#   summarise(n_customers = sum(customer_weight), n_visits = sum(visit_weight)) %>% 
+#   plot_ly(x = ~visit_start_week) %>% 
+#   add_trace(y = ~n_visits) %>%  
+#   add_trace(y = ~n_customers)
+```
+
+### check how far is each gym from home or work of users (median)
+Take the median long and lat for each device
+Do the distance of each from the gym
+Do a weighted avg = distance * customer weight / sum of customers
+Per week/month
+```{r}
+w_avg_distance <- function(gym_table) {
+  
+  w_avg_distance <- gym_table %>%
+    ## Take the median long and lat for each device
+  group_by(device_id) %>% 
+  summarise(venue_lat = median(venue_lat),
+            venue_long = median(venue_lng),
+            customer_weight = median(customer_weight),
+            med_home_lat = median(user_home_lat),
+            med_home_long = median(user_home_long),
+            med_work_lat = median(user_work_lat),
+            med_work_long = median(user_work_long)
+            ) %>% 
+  ungroup() %>% 
+  ## Do the distance of each from the gym
+  mutate(distance_from_home = sqrt((med_home_lat - venue_lat)^2 + (med_home_long - venue_long)^2)) %>% 
+  mutate(distance_from_work = sqrt((med_work_lat - venue_lat)^2 + (med_work_long - venue_long)^2)) %>% 
+  ## chose the nearest - work or home
+  rowwise() %>%
+  mutate(distance_from_nearest = min(distance_from_home, distance_from_work, na.rm = T)) %>% 
+  ungroup() %>% 
+  ## Do a weighted avg = distance * customer weight / sum of customers
+  summarise(w_avg = sum(distance_from_nearest*customer_weight)/sum(customer_weight))
+}
+
+Alpharetta_Hwy_Roswell_distance <- Alpharetta_Hwy_Roswell %>% w_avg_distance()
+Holcomb_Bridge_Road_Roswell_distance <- Holcomb_Bridge_Road_Roswell %>% w_avg_distance()
+Molly_Lane_Woodstock_distance <- Molly_Lane_Woodstock %>% w_avg_distance()
+Highway_9_Milton_distance <- Highway_9_Milton %>% w_avg_distance()
+
+rbind(Alpharetta_Hwy_Roswell_d = Alpharetta_Hwy_Roswell_distance,
+      Holcomb_Bridge_Road_Roswell_d = Holcomb_Bridge_Road_Roswell_distance,
+      Molly_Lane_Woodstock_d = Molly_Lane_Woodstock_distance,
+      Highway_9_Milton_d = Highway_9_Milton_distance)
+```
+
+### Are Holcomb_Bridge_Road_Roswell and Highway_9_Milton_p compeating with Alpharetta_Hwy_Roswell?
+
+
