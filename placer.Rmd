@@ -75,7 +75,7 @@ weekly_weights <- function(gym_table) {
     group_by(visit_start_week) %>%
     summarise(n_customers = sum(customer_weight), 
               n_visits = sum(visit_weight)) %>% 
-    summarise(median_weekly_customers = median(n_customers), median_weekly_visits = median(n_visits), visits_per_customer = median(n_visits) / median(n_customers)) %>% 
+    summarise(median_weekly_customers = median(n_customers), median_weekly_visits = median(n_visits), visits_per_customer = median(n_visits / n_customers)) %>% 
     ungroup() %>% 
     as_tibble()
 }
@@ -105,7 +105,7 @@ weekly_weights <- function(gym_table) {
     group_by(visit_start_month) %>%
     summarise(n_customers = sum(customer_weight), 
               n_visits = sum(visit_weight)) %>% 
-    summarise(median_monthly_customers = median(n_customers), median_monthly_visits = median(n_visits), visits_per_customer = median(n_visits) / median(n_customers)) %>% 
+    summarise(median_monthly_customers = median(n_customers), median_monthly_visits = median(n_visits), visits_per_customer = median(n_visits / n_customers)) %>% 
     ungroup() %>% 
     as_tibble()
 }
